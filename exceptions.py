@@ -6,3 +6,8 @@ class ConnectError(Exception):
 class TokenError(Exception):
     """Некорректные токены."""
     pass
+
+
+class MessageError(Exception):
+    """Ошибка отправки сообщения."""
+    pass

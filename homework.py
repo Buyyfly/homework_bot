@@ -26,8 +26,11 @@ VERDICTS = {
 
 def send_message(bot, message):
     """Отправка сообщения."""
-    bot.send_message(TELEGRAM_CHAT_ID, message)
-    logging.info('Сообщение успешно отправлено')
+    try:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+        logging.info('Сообщение успешно отправлено')
+    except Exception as err:
+        raise exceptions.MessageError(f'Сообще не отправлено по причине {err}')
 
 
 def get_api_answer(current_timestamp):
@@ -36,8 +39,8 @@ def get_api_answer(current_timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
-    except Exception as err:
-        raise Exception(f'Ошибка подключения - {err}')
+    except requests.exceptions.RequestException as err:
+        raise ConnectionError(f'Ошибка подключения - {err}')
 
     if response.status_code != 200:
         raise exceptions.ConnectError('Подкючение не удалось')
@@ -51,9 +54,10 @@ def check_response(response):
         raise TypeError('Не корректный ответ от API')
     if 'homeworks' not in response:
         raise KeyError('Ключ не найден')
-    if not isinstance(response['homeworks'], list):
+    homeworks = response['homeworks']
+    if not isinstance(homeworks, list):
         raise TypeError('Домашки приходят не в виде списка в ответ от API')
-    return response.get('homeworks')
+    return homeworks
 
 
 def parse_status(homework):
@@ -62,19 +66,20 @@ def parse_status(homework):
         raise KeyError('Не найден ключ "homework_name"')
     if 'status' not in homework:
         raise KeyError('Не найден ключ "status"')
-
-    if homework['status'] not in VERDICTS:
+    hw_status = homework['status']
+    if hw_status not in VERDICTS:
         raise ValueError('Не найден статус')
     homework_name = homework['homework_name']
-    verdict = VERDICTS.get(homework['status'])
+    verdict = VERDICTS[hw_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
     """Проверка наличия токенов."""
-    if all([PRACTICUM_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_TOKEN]):
-        return True
-    return False
+    # стало хуже. Что возвращает all()?
+    # /
+    # Вернет False если хоть один из токенов отсутствует
+    return all([PRACTICUM_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_TOKEN])
 
 
 def main():
@@ -91,9 +96,21 @@ def main():
             send_message(bot, status)
         except Exception as err:
             try:
-                bot.send_message(TELEGRAM_CHAT_ID, str(err))
+                send_message(bot, str(err))
             except Exception:
-                raise
+                raise exceptions.MessageError(
+                    f'Ошибка отправки сообщения об ошибке - {err}'
+                )
+            raise exceptions.MessageError(
+                f'Ошибка отправки сообщения - {err}'
+            )
+        # тут используем свою ранее написанную функцию,
+        # а не метод объекта бота.
+        # И проблема предыдущего ревью тут не решена.
+        # Подсказка: поможет несколько блоков except
+        # /
+        # Куда здесь еще блоки? Для чего? Не совмесем понятно.
+        # Прошу объяснить
         finally:
             time.sleep(RETRY_TIME)
 
