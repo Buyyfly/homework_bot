@@ -76,9 +76,6 @@ def parse_status(homework):
 
 def check_tokens():
     """Проверка наличия токенов."""
-    # стало хуже. Что возвращает all()?
-    # /
-    # Вернет False если хоть один из токенов отсутствует
     return all([PRACTICUM_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_TOKEN])
 
 
@@ -94,23 +91,11 @@ def main():
             homeworks = check_response(response)
             status = parse_status(homeworks[0])
             send_message(bot, status)
+        except exceptions.MessageError as err:
+            raise exceptions.MessageError(f'Ошибка отправки в телеграмм- {err}')
         except Exception as err:
-            try:
-                send_message(bot, str(err))
-            except Exception:
-                raise exceptions.MessageError(
-                    f'Ошибка отправки сообщения об ошибке - {err}'
-                )
-            raise exceptions.MessageError(
-                f'Ошибка отправки сообщения - {err}'
-            )
-        # тут используем свою ранее написанную функцию,
-        # а не метод объекта бота.
-        # И проблема предыдущего ревью тут не решена.
-        # Подсказка: поможет несколько блоков except
-        # /
-        # Куда здесь еще блоки? Для чего? Не совмесем понятно.
-        # Прошу объяснить
+            send_message(bot, str(err))
+            raise Exception(f'Ошибка отправки сообщения - {err}' )
         finally:
             time.sleep(RETRY_TIME)
 
