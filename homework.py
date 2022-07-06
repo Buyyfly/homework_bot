@@ -92,12 +92,10 @@ def main():
             status = parse_status(homeworks[0])
             send_message(bot, status)
         except exceptions.MessageError as err:
-            raise exceptions.MessageError(
-                f'Ошибка отправки в телеграмм- {err}'
-            )
+            logging.exception(f'Ошибка отправки в телеграмм- {err}')
         except Exception as err:
             send_message(bot, str(err))
-            raise Exception(f'Ошибка отправки сообщения - {err}')
+            logging.exception(f'Ошибка отправки сообщения - {err}')
         finally:
             time.sleep(RETRY_TIME)
 
